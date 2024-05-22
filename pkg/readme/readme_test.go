@@ -1,67 +1,76 @@
 package readme
 
-import "testing"
+import (
+	"testing"
+	"github.com/google/go-github/github"
+	"golang.org/x/oauth2"
+	"net/http"
+	"net/http/httptest"
+	"os"
+)
 
+// TestRead verifies the Read function can correctly read content from a file.
 func TestRead(t *testing.T) {
-	type args struct {
-		filePath string
+	// Setup a temporary file
+	filePath := "./test_readme.md"
+	content := "This is a test content."
+	os.WriteFile(filePath, []byte(content), 0644)
+	defer os.Remove(filePath)
+
+	// Execute the test
+	got, err := Read(filePath)
+	if err != nil {
+		t.Errorf("Read() error = %v, wantErr %v", err, false)
 	}
-	var tests []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := Read(tt.args.filePath)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Read() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("Read() got = %v, want %v", got, tt.want)
-			}
-		})
+	if got != content {
+		t.Errorf("Read() got = %v, want %v", got, content)
 	}
 }
 
+// TestUpdate verifies the Update function can correctly write content to a file.
 func TestUpdate(t *testing.T) {
-	type args struct {
-		filePath string
-		content  string
+	// Setup a temporary file
+	filePath := "./test_update.md"
+	initialContent := "Initial content."
+	updatedContent := "Updated content."
+	os.WriteFile(filePath, []byte(initialContent), 0644)
+	defer os.Remove(filePath)
+
+	// Execute the test
+	err := Update(filePath, updatedContent)
+	if err != nil {
+		t.Errorf("Update() error = %v, wantErr %v", err, false)
 	}
-	var tests []struct {
-		name    string
-		args    args
-		wantErr bool
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := Update(tt.args.filePath, tt.args.content); (err != nil) != tt.wantErr {
-				t.Errorf("Update() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+
+	// Verify the file content
+	content, _ := os.ReadFile(filePath)
+	if string(content) != updatedContent {
+		t.Errorf("Update() got = %v, want %v", string(content), updatedContent)
 	}
 }
 
+// TestUpdateGitHubRepoFile verifies the UpdateGitHubRepoFile function can interact with the GitHub API.
 func TestUpdateGitHubRepoFile(t *testing.T) {
-	type args struct {
-		fileContents []byte
-		repo         string
-		org          string
-		filePath     string
-	}
-	var tests []struct {
-		name string
-		args args
-		want string
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := UpdateGitHubRepoFile(tt.args.fileContents, tt.args.repo, tt.args.org, tt.args.filePath); got != tt.want {
-				t.Errorf("UpdateGitHubRepoFile() = %v, want %v", got, tt.want)
-			}
-		})
+	// Setup a mock GitHub server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Setup GitHub client with mock server
+	ctx := oauth2.NoContext
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "fake-token"})
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+	client.BaseURL = server.URL
+
+	// Execute the test
+	fileContents := []byte("Test content for GitHub file update.")
+	repo := "test-repo"
+	org := "test-org"
+	filePath := "test_file.md"
+	status := UpdateGitHubRepoFile(client, fileContents, repo, org, filePath)
+	if status != "200 OK" {
+		t.Errorf("UpdateGitHubRepoFile() status = %v, want %v", status, "200 OK")
 	}
 }
