@@ -1,71 +1,43 @@
 package stats
 
 import (
-	"reflect"
 	"testing"
 )
 
 func TestNewTable(t *testing.T) {
-	type args struct {
-		headers []string
+	headers := []string{"Header1", "Header2"}
+	table := NewTable(headers)
+	if table == nil {
+		t.Errorf("NewTable was incorrect, got: nil, want: not nil.")
 	}
-	var tests []struct {
-		name string
-		args args
-		want *Table
+	if len(table.headers) != len(headers) {
+		t.Errorf("NewTable headers length was incorrect, got: %d, want: %d.", len(table.headers), len(headers))
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewTable(tt.args.headers); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewTable() = %v, want %v", got, tt.want)
-			}
-		})
+	for i, header := range table.headers {
+		if header != headers[i] {
+			t.Errorf("NewTable header was incorrect, got: %s, want: %s.", header, headers[i])
+		}
 	}
 }
 
-func TestTable_AddRow(t1 *testing.T) {
-	type fields struct {
-		headers []string
-		rows    [][]string
+func TestTable_AddRow(t *testing.T) {
+	table := NewTable([]string{"Header1", "Header2"})
+	row := NewRow("Repo1", "Org1", "Project1", true)
+	table.AddRow(*row)
+	if len(table.rows) != 1 {
+		t.Errorf("AddRow was incorrect, got: %d rows, want: 1 row.", len(table.rows))
 	}
-	type args struct {
-		row []string
-	}
-	var tests []struct {
-		name   string
-		fields fields
-		args   args
-	}
-	for _, tt := range tests {
-		t1.Run(tt.name, func(t1 *testing.T) {
-			t := &Table{
-				headers: tt.fields.headers,
-				rows:    tt.fields.rows,
-			}
-			t.AddRow(tt.args.row)
-		})
+	if table.rows[0].GitHubRepo != "Repo1" {
+		t.Errorf("AddRow GitHubRepo was incorrect, got: %s, want: Repo1.", table.rows[0].GitHubRepo)
 	}
 }
 
-func TestTable_String(t1 *testing.T) {
-	type fields struct {
-		headers []string
-		rows    [][]string
-	}
-	var tests []struct {
-		name   string
-		fields fields
-		want   string
-	}
-	for _, tt := range tests {
-		t1.Run(tt.name, func(t1 *testing.T) {
-			t := &Table{
-				headers: tt.fields.headers,
-				rows:    tt.fields.rows,
-			}
-			if got := t.String(); got != tt.want {
-				t1.Errorf("String() = %v, want %v", got, tt.want)
-			}
-		})
+func TestTable_String(t *testing.T) {
+	table := NewTable([]string{"Header1", "Header2"})
+	row := NewRow("Repo1", "Org1", "Project1", true)
+	table.AddRow(*row)
+	expectedString := "| Header1 | Header2 |\n| :---: | :---: |\n| Repo1 | Org1 | Project1 | :white_check_mark: | :white_check_mark: | :ok_hand: |\n"
+	if table.String() != expectedString {
+		t.Errorf("String was incorrect, got: %s, want: %s.", table.String(), expectedString)
 	}
 }
